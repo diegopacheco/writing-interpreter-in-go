@@ -1,6 +1,8 @@
 package lexer
 
 import (
+	"fmt"
+
 	"github.com/diegopacheco/writing-interpreter-in-go/token"
 )
 
@@ -34,12 +36,43 @@ func newToken(tokenType token.TokenType, ch byte) token.Token {
 func (l *Lexer) NextToken() token.Token {
 	var tok token.Token
 	l.skipWhitespace()
+	fmt.Printf("Current char: %q, Position: %d\n", l.ch, l.position)
 
 	switch l.ch {
 	case '=':
-		tok = newToken(token.ASSIGN, l.ch)
+		if peekChar(l) == '=' {
+			ch := l.ch
+			l.readChar()
+			tok.Literal = string(ch) + string(l.ch)
+			tok.Type = token.EQ
+		} else {
+			tok = newToken(token.ASSIGN, l.ch)
+		}
+	case '!':
+		if peekChar(l) == '=' {
+			ch := l.ch
+			l.readChar()
+			tok.Literal = string(ch) + string(l.ch)
+			tok.Type = token.NOT_EQ
+		} else {
+			tok = newToken(token.BANG, l.ch)
+		}
+	case '+':
+		tok = newToken(token.PLUS, l.ch)
+	case '-':
+		tok = newToken(token.MINUS, l.ch)
+	case '/':
+		tok = newToken(token.SLASH, l.ch)
+	case '*':
+		tok = newToken(token.ASTERISK, l.ch)
+	case '<':
+		tok = newToken(token.LT, l.ch)
+	case '>':
+		tok = newToken(token.GT, l.ch)
 	case ';':
 		tok = newToken(token.SEMICOLON, l.ch)
+	case ',':
+		tok = newToken(token.COMMA, l.ch)
 	case '(':
 		tok = newToken(token.LPAREN, l.ch)
 	case ')':
@@ -48,14 +81,10 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.LBRACE, l.ch)
 	case '}':
 		tok = newToken(token.RBRACE, l.ch)
-	case ',':
-		tok = newToken(token.COMMA, l.ch)
-	case '+':
-		tok = newToken(token.PLUS, l.ch)
 	case '[':
-		tok = newToken(token.LBRACE, l.ch)
+		tok = newToken(token.LBRACKET, l.ch)
 	case ']':
-		tok = newToken(token.RBRACE, l.ch)
+		tok = newToken(token.RBRACKET, l.ch)
 	case 0:
 		tok.Literal = ""
 		tok.Type = token.EOF
@@ -72,6 +101,7 @@ func (l *Lexer) NextToken() token.Token {
 			tok = newToken(token.ILLEGAL, l.ch)
 		}
 	}
+
 	l.readChar()
 	return tok
 }
@@ -102,8 +132,13 @@ func (l *Lexer) readIdentifier() string {
 
 func lookupIdent(ident string) token.TokenType {
 	keywords := map[string]token.TokenType{
-		"fn":  token.FUNCTION,
-		"let": token.LET,
+		"fn":     token.FUNCTION,
+		"let":    token.LET,
+		"if":     token.IF,
+		"else":   token.ELSE,
+		"return": token.RETURN,
+		"true":   token.TRUE,
+		"false":  token.FALSE,
 	}
 	if tok, ok := keywords[ident]; ok {
 		return tok
@@ -115,4 +150,11 @@ func (l *Lexer) skipWhitespace() {
 	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
 		l.readChar()
 	}
+}
+
+func peekChar(l *Lexer) byte {
+	if l.readPosition >= len(l.input) {
+		return 0
+	}
+	return l.input[l.readPosition]
 }
