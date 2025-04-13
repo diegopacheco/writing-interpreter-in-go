@@ -1,18 +1,20 @@
 ### Notes
 
 * Parsing
-    * Output of a parser (AST) is abstract
-    * Parser Generators
-        * YACC
-        * BISON
-        * AntLR
-    * Context Free Grammar (CFG) - Input (with a set of rules on how to form correct sentences on the language)
-        * Backus Naur Form (BNF)
-        * Extended-Backus Naur Form (EBNF)
-    * 2 Main strategies when writing a parser form a programming language
-        * Top down parsing
-        * Botton up parsing 
+* Output of a parser (AST) is abstract
+* Parser Generators
+	* YACC
+	* BISON
+	* AntLR
+* Context Free Grammar (CFG) - Input (with a set of rules on how to form correct sentences on the language)
+	* Backus Naur Form (BNF)
+	* Extended-Backus Naur Form (EBNF)
+* 2 Main strategies when writing a parser form a programming language
+	* Top down parsing
+	* Botton up parsing 
 * Recursive Decent Parser (Top down operator precedence parser) -> Pratt Parser
+* Top Down Operator Precedence
+    * https://crockford.com/javascript/tdop/tdop.html
 
 ### Run
 
