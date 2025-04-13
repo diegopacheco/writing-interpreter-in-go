@@ -23,8 +23,8 @@ func TestString(t *testing.T) {
 		},
 	}
 
-	if program.TokenLiteral() != "let" {
-		t.Errorf("program.TokenLiteral() wrong. got=%q", program.TokenLiteral())
+	if program.String() != "let myVar = anotherVar;" {
+		t.Errorf("program.String() wrong. got=%q", program.String())
 	}
 
 	letStmt := program.Statements[0].(*LetStatement)
