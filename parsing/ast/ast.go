@@ -2,6 +2,7 @@ package ast
 
 import (
 	"bytes"
+	"strings"
 
 	"github.com/diegopacheco/writing-interpreter-in-go/token"
 )
@@ -13,9 +14,16 @@ type Node interface {
 
 func (p *Program) String() string {
 	var out bytes.Buffer
-	for _, s := range p.Statements {
+
+	for i, s := range p.Statements {
 		out.WriteString(s.String())
+		// If this isn't the last statement and the statement doesn't already end with a semicolon
+		// (Some statements might already include semicolons in their String() implementation)
+		if i < len(p.Statements)-1 && !strings.HasSuffix(s.String(), ";") {
+			out.WriteString("; ")
+		}
 	}
+
 	return out.String()
 }
 
