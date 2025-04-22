@@ -249,3 +249,9 @@ func (bs *BlockStatement) String() string {
 	}
 	return out.String()
 }
+
+type FunctionaLiteral struct {
+	Token      token.Token
+	Parameters []*Identifier
+	Body       *BlockStatement
+}
