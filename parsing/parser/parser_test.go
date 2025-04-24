@@ -552,3 +552,43 @@ func TestIfExpression(t *testing.T) {
 		return
 	}
 }
+
+func TestFunctionLiteralParsing(t *testing.T) {
+	input := `fn(x, y) { x + y; }`
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParseErrors(t, p)
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program.Statements does not contain 1 statement. got=%d",
+			len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not ast.ExpressionStatement. got=%T",
+			program.Statements[0])
+	}
+	exp, ok := stmt.Expression.(*ast.FunctionaLiteral)
+	if !ok {
+		t.Fatalf("stmt.Expression not ast.FunctionLiteral. got=%T",
+			stmt.Expression)
+	}
+	if len(exp.Parameters) != 2 {
+		t.Fatalf("function literal parameters wrong. want 2, got=%d",
+			len(exp.Parameters))
+	}
+
+	testLiteralExpression(t, exp.Parameters[0], "x")
+	testLiteralExpression(t, exp.Parameters[1], "y")
+	if len(exp.Body.Statements) != 1 {
+		t.Fatalf("function body has not 1 statement. got=%d",
+			len(exp.Body.Statements))
+	}
+	bodyStmt, ok := exp.Body.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("function body statement not ast.ExpressionStatement. got=%T",
+			exp.Body.Statements[0])
+	}
+	testInfixExpresson(t, bodyStmt.Expression, "x", "+", "y")
+}
