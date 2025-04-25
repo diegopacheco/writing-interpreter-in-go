@@ -29,6 +29,7 @@ var precedences = map[token.TokenType]int{
 	token.MINUS:    SUM,
 	token.SLASH:    PRODUCT,
 	token.ASTERISK: PRODUCT,
+	token.LPAREN:   CALL,
 }
 
 func (p *Parser) peekPrecedence() int {
@@ -80,6 +81,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
+	p.registerInfix(token.LPAREN, p.parseCallExpression)
 
 	// Register prefix parse functions
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
@@ -96,6 +98,34 @@ func New(l *lexer.Lexer) *Parser {
 	p.nextToken()
 	p.nextToken()
 	return p
+}
+
+func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
+	call := &ast.CallExpression{Token: p.curToken, Function: function}
+	call.Arguments = p.parseCallArguments()
+	return call
+}
+
+func (p *Parser) parseCallArguments() []ast.Expression {
+	args := []ast.Expression{}
+	if p.peekTokenIs(token.RPAREN) {
+		p.nextToken()
+		return args
+	}
+	p.nextToken()
+	arg := p.parseExpression(LOWEST)
+	args = append(args, arg)
+
+	for p.peekTokenIs(token.COMMA) {
+		p.nextToken()
+		p.nextToken()
+		arg := p.parseExpression(LOWEST)
+		args = append(args, arg)
+	}
+	if !p.expectPeek(token.RPAREN) {
+		return nil
+	}
+	return args
 }
 
 func (p *Parser) parseFunctionLiteral() ast.Expression {
@@ -295,8 +325,7 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	stmt := &ast.ReturnStatement{Token: p.curToken}
 	p.nextToken()
-	// TODO: skip expressions until semicolon
-	// encounter semicolon
+	stmt.ReturnValue = p.parseExpression(LOWEST)
 	for !p.curTokenIs(token.SEMICOLON) {
 		p.nextToken()
 	}
@@ -311,17 +340,14 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 	}
 
 	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-
 	if !p.expectPeek(token.ASSIGN) {
 		return nil
 	}
-
-	// Skip the expression for now (we'll implement this properly later)
-	// Advance until semicolon
-	for !p.curTokenIs(token.SEMICOLON) && !p.curTokenIs(token.EOF) {
+	p.nextToken()
+	stmt.Value = p.parseExpression(LOWEST)
+	if p.peekTokenIs(token.SEMICOLON) {
 		p.nextToken()
 	}
-
 	return stmt
 }
 
