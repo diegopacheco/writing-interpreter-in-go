@@ -8,6 +8,40 @@ import (
 	"github.com/diegopacheco/writing-interpreter-in-go/lexer"
 )
 
+func TestLetStatementsNoShortcuts(t *testing.T) {
+	tests := []struct {
+		input              string
+		expectedIdentifier string
+		expectedValue      interface{}
+	}{
+		{"let x = 5;", "x", 5},
+		{"let y = true;", "y", true},
+		{"let foobar = y;", "foobar", "y"},
+	}
+
+	for _, tt := range tests {
+		l := lexer.New(tt.input)
+		p := New(l)
+		program := p.ParseProgram()
+		checkParseErrors(t, p)
+
+		if len(program.Statements) != 1 {
+			t.Fatalf("program.Statements does not contain 1 statement. got=%d",
+				len(program.Statements))
+		}
+
+		stmt := program.Statements[0]
+		if !testLetStatement(t, stmt, tt.expectedIdentifier) {
+			return
+		}
+
+		val := stmt.(*ast.LetStatement).Value
+		if !testLiteralExpression(t, val, tt.expectedValue) {
+			return
+		}
+	}
+}
+
 func TestLetStatements(t *testing.T) {
 	input := `
 	let x = 5;
@@ -133,7 +167,7 @@ func testLetStatement(t *testing.T, s ast.Statement, name string) bool {
 	return true
 }
 
-func testIdentifierExpression(t *testing.T) {
+func TestIdentifierExpression(t *testing.T) {
 	input := `foobar;`
 	l := lexer.New(input)
 	p := New(l)
@@ -479,6 +513,18 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 			"!(true == true)",
 			"(!(true == true))",
 		},
+		{
+			"a + add(b*c) + d",
+			"((a + add((b * c))) + d)",
+		},
+		{
+			"add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+			"add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
+		},
+		{
+			"add(a + b + c * d / e - f + g)",
+			"add(((((a + b) + ((c * d) / e)) - f) + g))",
+		},
 	}
 
 	for _, tt := range tests {
@@ -528,9 +574,16 @@ func TestIfExpression(t *testing.T) {
 			exp.Consequence.Statements[0])
 	}
 	if !ok {
-		t.Fatalf("consequence.Expression not ast.Identifier. got=%T",
-			consequence.Expression)
+		if consequence == nil {
+			t.Fatalf("consequence is nil")
+		} else if consequence.Expression == nil {
+			t.Fatalf("consequence.Expression is nil")
+		} else {
+			t.Fatalf("consequence is not ast.ExpressionStatement. got=%T",
+				exp.Consequence.Statements[0])
+		}
 	}
+
 	if !testIdentifier(t, consequence.Expression, "x") {
 		return
 	}
@@ -591,4 +644,67 @@ func TestFunctionLiteralParsing(t *testing.T) {
 			exp.Body.Statements[0])
 	}
 	testInfixExpresson(t, bodyStmt.Expression, "x", "+", "y")
+}
+
+func TestFunctionParameterParsing(t *testing.T) {
+	tests := []struct {
+		input          string
+		expectedParams []string
+	}{
+		{"fn() {};", []string{}},
+		{"fn(x) {};", []string{"x"}},
+		{"fn(x, y, z) {};", []string{"x", "y", "z"}},
+	}
+
+	for _, tt := range tests {
+		l := lexer.New(tt.input)
+		p := New(l)
+		program := p.ParseProgram()
+		checkParseErrors(t, p)
+
+		stmt := program.Statements[0].(*ast.ExpressionStatement)
+		function := stmt.Expression.(*ast.FunctionaLiteral)
+
+		if len(function.Parameters) != len(tt.expectedParams) {
+			t.Fatalf("length of parameters wrong. expected=%d, got=%d",
+				len(tt.expectedParams), len(function.Parameters))
+		}
+
+		for i, ident := range tt.expectedParams {
+			testLiteralExpression(t, function.Parameters[i], ident)
+		}
+	}
+}
+
+func TestCallExpressionParsing(t *testing.T) {
+	input := "add(1, 2 * 3, 4 + 5);"
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParseErrors(t, p)
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program.Statements does not contain 1 statement. got=%d",
+			len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not ast.ExpressionStatement. got=%T",
+			program.Statements[0])
+	}
+	exp, ok := stmt.Expression.(*ast.CallExpression)
+	if !ok {
+		t.Fatalf("stmt.Expression not ast.CallExpression. got=%T",
+			stmt.Expression)
+	}
+	if !testIdentifier(t, exp.Function, "add") {
+		return
+	}
+	if len(exp.Arguments) != 3 {
+		t.Fatalf("wrong length of arguments. expected 3, got=%d",
+			len(exp.Arguments))
+	}
+	testLiteralExpression(t, exp.Arguments[0], 1)
+	testInfixExpresson(t, exp.Arguments[1], 2, "*", 3)
+	testInfixExpresson(t, exp.Arguments[2], 4, "+", 5)
 }
