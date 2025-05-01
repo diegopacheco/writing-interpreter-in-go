@@ -1,11 +1,12 @@
 package evaluator
 
 import (
+	"fmt"
 	"testing"
 
-	"github.com/diegopacheco/writing-interpreter-in-go/lexer"
-	"github.com/diegopacheco/writing-interpreter-in-go/object"
-	"github.com/diegopacheco/writing-interpreter-in-go/parser"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/lexer"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/object"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/parser"
 )
 
 func TestEvalIntegerExpression(t *testing.T) {
@@ -41,8 +42,15 @@ func testEval(input string) object.Object {
 	l := lexer.New(input)
 	p := parser.New(l)
 	program := p.ParseProgram()
-	env := object.NewEnvironment()
 
+	if len(p.Errors()) != 0 {
+		panic(fmt.Sprintf("parser had errors for input '%s': %v", input, p.Errors()))
+	}
+	if program == nil {
+		panic(fmt.Sprintf("ParseProgram() returned nil for input '%s'", input))
+	}
+
+	env := object.NewEnvironment()
 	return Eval(program, env)
 }
 
@@ -185,6 +193,8 @@ func TestErrorHandling(t *testing.T) {
 		{"true + false;", "type mismatch: BOOLEAN + BOOLEAN"},
 		{"5; true + false; 5", "type mismatch: BOOLEAN + BOOLEAN"},
 		{"foobar", "identifier not found: foobar"},
+		{"if (10 > 1) { true + false; }", "type mismatch: BOOLEAN + BOOLEAN"},
+		{"if (10 > 1) { if (10 > 1) { return true + false; } return 1; }", "type mismatch: BOOLEAN + BOOLEAN"},
 	}
 	for _, tt := range tests {
 		evaluated := testEval(tt.input)
@@ -217,5 +227,36 @@ func TestLetStatements(t *testing.T) {
 		} else {
 			testNullObject(t, evaluated)
 		}
+	}
+}
+
+func TestFunctionObject(t *testing.T) {
+	input := `fn(x) { x + 2; };`
+	l := lexer.New(input)
+	p := parser.New(l)
+	program := p.ParseProgram()
+	if len(p.Errors()) != 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+	env := object.NewEnvironment()
+	evaluated := Eval(program, env)
+
+	if evaluated == nil {
+		t.Fatalf("Eval returned nil directly")
+	}
+
+	fn, ok := evaluated.(*object.Function)
+	if !ok {
+		t.Fatalf("object is not Function. got=%T (%+v)", evaluated, evaluated)
+	}
+	if len(fn.Parameters) != 1 {
+		t.Fatalf("function has wrong parameters. Parameters=%+v", fn.Parameters)
+	}
+	if fn.Parameters[0].String() != "x" {
+		t.Fatalf("parameter is not 'x'. got=%q", fn.Parameters[0])
+	}
+	expectedBody := "(x + 2)"
+	if fn.Body.String() != expectedBody {
+		t.Fatalf("body is not %q. got=%q", expectedBody, fn.Body.String())
 	}
 }
