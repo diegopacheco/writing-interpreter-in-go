@@ -1,9 +1,7 @@
 package lexer
 
 import (
-	"fmt"
-
-	"github.com/diegopacheco/writing-interpreter-in-go/token"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/token"
 )
 
 type Lexer struct {
@@ -36,7 +34,10 @@ func newToken(tokenType token.TokenType, ch byte) token.Token {
 func (l *Lexer) NextToken() token.Token {
 	var tok token.Token
 	l.skipWhitespace()
-	fmt.Printf("Current char: %q, Position: %d\n", l.ch, l.position)
+	//
+	// uncomment for debugging
+	//
+	//fmt.Printf("Current char: %q, Position: %d\n", l.ch, l.position)
 
 	switch l.ch {
 	case '=':
