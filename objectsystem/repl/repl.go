@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/diegopacheco/writing-interpreter-in-go/evaluator"
-	"github.com/diegopacheco/writing-interpreter-in-go/lexer"
-	"github.com/diegopacheco/writing-interpreter-in-go/object"
-	"github.com/diegopacheco/writing-interpreter-in-go/parser"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/evaluator"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/lexer"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/object"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/parser"
 )
 
 const MONKEY_FACE = `
