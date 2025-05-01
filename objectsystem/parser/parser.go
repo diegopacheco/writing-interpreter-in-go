@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/diegopacheco/writing-interpreter-in-go/ast"
-	"github.com/diegopacheco/writing-interpreter-in-go/lexer"
-	"github.com/diegopacheco/writing-interpreter-in-go/token"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/ast"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/lexer"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/token"
 )
 
 const (
@@ -129,7 +129,7 @@ func (p *Parser) parseCallArguments() []ast.Expression {
 }
 
 func (p *Parser) parseFunctionLiteral() ast.Expression {
-	lit := &ast.FunctionaLiteral{Token: p.curToken}
+	lit := &ast.FunctionLiteral{Token: p.curToken}
 	if !p.expectPeek(token.LPAREN) {
 		return nil
 	}
