@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/diegopacheco/writing-interpreter-in-go/ast"
-	"github.com/diegopacheco/writing-interpreter-in-go/lexer"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/ast"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/lexer"
 )
 
 func TestLetStatementsNoShortcuts(t *testing.T) {
@@ -622,7 +622,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 		t.Fatalf("program.Statements[0] is not ast.ExpressionStatement. got=%T",
 			program.Statements[0])
 	}
-	exp, ok := stmt.Expression.(*ast.FunctionaLiteral)
+	exp, ok := stmt.Expression.(*ast.FunctionLiteral)
 	if !ok {
 		t.Fatalf("stmt.Expression not ast.FunctionLiteral. got=%T",
 			stmt.Expression)
@@ -663,7 +663,7 @@ func TestFunctionParameterParsing(t *testing.T) {
 		checkParseErrors(t, p)
 
 		stmt := program.Statements[0].(*ast.ExpressionStatement)
-		function := stmt.Expression.(*ast.FunctionaLiteral)
+		function := stmt.Expression.(*ast.FunctionLiteral)
 
 		if len(function.Parameters) != len(tt.expectedParams) {
 			t.Fatalf("length of parameters wrong. expected=%d, got=%d",
