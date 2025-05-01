@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/user"
 
-	"github.com/diegopacheco/writing-interpreter-in-go/repl"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/repl"
 )
 
 func main() {
