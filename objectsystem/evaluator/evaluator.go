@@ -6,6 +6,7 @@ import (
 
 	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/ast"
 	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/object"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/tracing"
 )
 
 var (
@@ -15,28 +16,46 @@ var (
 )
 
 func Eval(node ast.Node, env *object.Environment) object.Object {
-	fmt.Printf(">>> Eval START: Received node type = %s\n", reflect.TypeOf(node))
+	if tracing.IsDebugMode() {
+		fmt.Printf(">>> Eval START: Received node type = %s\n", reflect.TypeOf(node))
+	}
 	var result object.Object
 
 	switch node := node.(type) {
 	case *ast.Program:
-		fmt.Println("    Eval: Handling *ast.Program")
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.Program")
+		}
 		result = evalProgram(node, env)
 
 	case *ast.ExpressionStatement:
-		fmt.Println("    Eval: Handling *ast.ExpressionStatement")
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.ExpressionStatement")
+		}
 		result = Eval(node.Expression, env)
 
 	case *ast.IntegerLiteral:
-		fmt.Println("    Eval: Handling *ast.IntegerLiteral")
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.IntegerLiteral")
+		}
 		result = &object.Integer{Value: node.Value}
 
 	case *ast.Boolean:
-		fmt.Println("    Eval: Handling *ast.Boolean")
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.Boolean")
+		}
 		result = nativeBoolToBooleanObject(node.Value)
 
+	case *ast.StringLiteral:
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.StringLiteral")
+		}
+		result = &object.String{Value: node.Value}
+
 	case *ast.PrefixExpression:
-		fmt.Println("    Eval: Handling *ast.PrefixExpression")
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.PrefixExpression")
+		}
 		right := Eval(node.Right, env)
 		if isError(right) {
 			result = right
@@ -45,7 +64,9 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 
 	case *ast.InfixExpression:
-		fmt.Println("    Eval: Handling *ast.InfixExpression")
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.InfixExpression")
+		}
 		left := Eval(node.Left, env)
 		if isError(left) {
 			result = left
@@ -59,15 +80,21 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 
 	case *ast.BlockStatement:
-		fmt.Println("    Eval: Handling *ast.BlockStatement")
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.BlockStatement")
+		}
 		result = evalBlockStatement(node, env)
 
 	case *ast.IfExpression:
-		fmt.Println("    Eval: Handling *ast.IfExpression")
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.IfExpression")
+		}
 		result = evalIfExpression(node, env)
 
 	case *ast.ReturnStatement:
-		fmt.Println("    Eval: Handling *ast.ReturnStatement")
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.ReturnStatement")
+		}
 		val := Eval(node.ReturnValue, env)
 		if isError(val) {
 			result = val
@@ -76,7 +103,9 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 
 	case *ast.LetStatement:
-		fmt.Println("    Eval: Handling *ast.LetStatement")
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.LetStatement")
+		}
 		val := Eval(node.Value, env)
 		if isError(val) {
 			result = val
@@ -86,11 +115,15 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 
 	case *ast.Identifier:
-		fmt.Println("    Eval: Handling *ast.Identifier")
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.Identifier")
+		}
 		result = evalIdentifier(node, env)
 
 	case *ast.FunctionLiteral:
-		fmt.Println("    Eval: Handling *ast.FunctionLiteral")
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.FunctionLiteral")
+		}
 		result = &object.Function{
 			Parameters: node.Parameters,
 			Body:       node.Body,
@@ -98,7 +131,9 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 
 	case *ast.CallExpression:
-		fmt.Println("    Eval: Handling *ast.CallExpression")
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.CallExpression")
+		}
 		fn := Eval(node.Function, env)
 		if isError(fn) {
 			result = fn
@@ -111,12 +146,26 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			}
 		}
 
+	case *ast.ArrayLiteral:
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.ArrayLiteral")
+		}
+		elements := evalExpressions(node.Elements, env)
+		if len(elements) == 1 && isError(elements[0]) {
+			return elements[0]
+		}
+		result = &object.Array{Elements: elements}
+
 	default:
-		fmt.Printf("    Eval: Handling default case for type %T\n", node)
+		if tracing.IsDebugMode() {
+			fmt.Printf("    Eval: Handling default case for type %T\n", node)
+		}
 		result = nil
 	}
 
-	fmt.Printf("<<< Eval END: Returning result type = %s, value = %+v\n", reflect.TypeOf(result), result)
+	if tracing.IsDebugMode() {
+		fmt.Printf("<<< Eval END: Returning result type = %s, value = %+v\n", reflect.TypeOf(result), result)
+	}
 	return result
 }
 
@@ -234,6 +283,8 @@ func evalInfixExpression(operator string, left, right object.Object) object.Obje
 		return newError("type mismatch: %s %s %s", left.Type(), operator, right.Type())
 	case left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ:
 		return evalIntegerInfixExpression(operator, left, right)
+	case left.Type() == object.STRING_OBJ && right.Type() == object.STRING_OBJ:
+		return evalStringInfixExpression(operator, left, right)
 	case operator == "==":
 		return nativeBoolToBooleanObject(left == right)
 	case operator == "!=":
@@ -246,6 +297,16 @@ func evalInfixExpression(operator string, left, right object.Object) object.Obje
 	default:
 		return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
 	}
+}
+
+func evalStringInfixExpression(operator string, left, right object.Object) object.Object {
+	if operator != "+" {
+		return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
+	}
+
+	leftVal := left.(*object.String).Value
+	rightVal := right.(*object.String).Value
+	return &object.String{Value: leftVal + rightVal}
 }
 
 func evalIntegerInfixExpression(operator string, left, right object.Object) object.Object {
@@ -277,10 +338,13 @@ func evalIntegerInfixExpression(operator string, left, right object.Object) obje
 func evalIdentifier(node *ast.Identifier,
 	env *object.Environment) object.Object {
 	val, ok := env.Get(node.Value)
-	if !ok {
-		return newError("identifier not found: %s", node.Value)
+	if ok {
+		return val
 	}
-	return val
+	if builtins := builtins[node.Value]; builtins != nil {
+		return builtins
+	}
+	return newError("identifier not found: %s", node.Value)
 }
 
 func applyFunction(fn object.Object, args []object.Object) object.Object {
@@ -288,14 +352,20 @@ func applyFunction(fn object.Object, args []object.Object) object.Object {
 		return newError("not a function: nil")
 	}
 
-	function, ok := fn.(*object.Function)
-	if !ok {
+	switch fn := fn.(type) {
+	case *object.Function:
+		extendedEnv := extendFunctionEnv(fn, args)
+		evaluated := Eval(fn.Body, extendedEnv)
+		return unwrapReturnValue(evaluated)
+	case *object.Builtin:
+		builtin := fn.Fn(args...)
+		if isError(builtin) {
+			return builtin
+		}
+		return builtin
+	default:
 		return newError("not a function: %s", fn.Type())
 	}
-
-	extendedEnv := extendFunctionEnv(function, args)
-	evaluated := Eval(function.Body, extendedEnv)
-	return unwrapReturnValue(evaluated)
 }
 
 func extendFunctionEnv(fn *object.Function, args []object.Object) *object.Environment {
