@@ -195,6 +195,7 @@ func TestErrorHandling(t *testing.T) {
 		{"foobar", "identifier not found: foobar"},
 		{"if (10 > 1) { true + false; }", "type mismatch: BOOLEAN + BOOLEAN"},
 		{"if (10 > 1) { if (10 > 1) { return true + false; } return 1; }", "type mismatch: BOOLEAN + BOOLEAN"},
+		{`"Hello" - "World"`, "unknown operator: STRING - STRING"},
 	}
 	for _, tt := range tests {
 		evaluated := testEval(tt.input)
@@ -258,5 +259,92 @@ func TestFunctionObject(t *testing.T) {
 	expectedBody := "(x + 2)"
 	if fn.Body.String() != expectedBody {
 		t.Fatalf("body is not %q. got=%q", expectedBody, fn.Body.String())
+	}
+}
+
+func TestFunctionApplication(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int64
+	}{
+		{"let identity = fn(x) { x; }; identity(5);", 5},
+		{"let identity = fn(x) { return x; }; identity(5);", 5},
+		{"let double = fn(x) { x * 2; }; double(5);", 10},
+		{"let add = fn(x, y) { x + y; }; add(5, 5);", 10},
+		{"let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));", 20},
+	}
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		testIntegerObject(t, evaluated, tt.expected)
+	}
+}
+
+func TestClosure(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int64
+	}{
+		{"let newAdder = fn(x) { fn(y) { x + y; }; }; let addTwo = newAdder(2); addTwo(2);", 4},
+		{"let newAdder = fn(x) { fn(y) { x + y; }; }; let addTwo = newAdder(2); addTwo(10);", 12},
+		{"let newAdder = fn(x) { fn(y) { x + y; }; }; let addTwo = newAdder(2); let addThree = newAdder(3); addThree(addTwo(10));", 15},
+	}
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		testIntegerObject(t, evaluated, tt.expected)
+	}
+}
+
+func TestStringLiteral(t *testing.T) {
+	input := `"Hello World!"`
+	evaluated := testEval(input)
+	str, ok := evaluated.(*object.String)
+	if !ok {
+		t.Fatalf("object is not String. got=%T (%+v)", evaluated, evaluated)
+	}
+	if str.Value != "Hello World!" {
+		t.Fatalf("String has wrong value. got=%q", str.Value)
+	}
+}
+
+func TestStringConcatenation(t *testing.T) {
+	input := `"Hello" + " " + "World!"`
+	evaluated := testEval(input)
+
+	str, ok := evaluated.(*object.String)
+	if !ok {
+		t.Fatalf("object is not String. got=%T (%+v)", evaluated, evaluated)
+	}
+	if str.Value != "Hello World!" {
+		t.Fatalf("String has wrong value. got=%q", str.Value)
+	}
+}
+
+func TestBuiltinFunctions(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected interface{}
+	}{
+		{"len(\"\")", 0},
+		{"len(\"Hello World!\")", 12},
+		{"len(\"Hello\" + \" \" + \"World!\")", 12},
+		{"len(1)", "argument to `len` not supported, got INTEGER"},
+		{"len(1, 2)", "wrong number of arguments. got=2"},
+	}
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		switch expected := tt.expected.(type) {
+		case int:
+			testIntegerObject(t, evaluated, int64(expected))
+		case string:
+			errObj, ok := evaluated.(*object.Error)
+			if !ok {
+				t.Fatalf("object is not Error. got=%T (%+v)", evaluated, evaluated)
+			}
+			if errObj.Message != expected {
+				t.Fatalf("wrong error message. expected=%q, got=%q", expected, errObj.Message)
+			}
+		default:
+			t.Fatalf("unknown expected type %T", expected)
+		}
 	}
 }
