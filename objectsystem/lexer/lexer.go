@@ -1,7 +1,10 @@
 package lexer
 
 import (
+	"fmt"
+
 	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/token"
+	"github.com/diegopacheco/writing-interpreter-in-go/objectsystem/tracing"
 )
 
 type Lexer struct {
@@ -34,10 +37,10 @@ func newToken(tokenType token.TokenType, ch byte) token.Token {
 func (l *Lexer) NextToken() token.Token {
 	var tok token.Token
 	l.skipWhitespace()
-	//
-	// uncomment for debugging
-	//
-	//fmt.Printf("Current char: %q, Position: %d\n", l.ch, l.position)
+
+	if tracing.IsDebugMode() {
+		fmt.Printf("Current char: %q, Position: %d\n", l.ch, l.position)
+	}
 
 	switch l.ch {
 	case '=':
@@ -86,6 +89,9 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.LBRACKET, l.ch)
 	case ']':
 		tok = newToken(token.RBRACKET, l.ch)
+	case '"':
+		tok.Type = token.STRING
+		tok.Literal = l.readString()
 	case 0:
 		tok.Literal = ""
 		tok.Type = token.EOF
@@ -158,4 +164,15 @@ func peekChar(l *Lexer) byte {
 		return 0
 	}
 	return l.input[l.readPosition]
+}
+
+func (l *Lexer) readString() string {
+	position := l.position + 1
+	for {
+		l.readChar()
+		if l.ch == '"' || l.ch == 0 {
+			break
+		}
+	}
+	return l.input[position:l.position]
 }
