@@ -363,3 +363,60 @@ func TestArrayLiterals(t *testing.T) {
 	testIntegerObject(t, arr.Elements[1], 4)
 	testIntegerObject(t, arr.Elements[2], 6)
 }
+
+func TestArrayIndexExpressions(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected interface{}
+	}{
+		{"[1, 2, 3][0]", 1},
+		{"[1, 2, 3][1]", 2},
+		{"[1, 2, 3][2]", 3},
+		{"let i = 0; [1][i];", 1},
+		{"[1, 2, 3][1 + 1];", 3},
+		{"let myArray = [1, 2, 3]; myArray[2];", 3},
+		{"let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2];", 6},
+		{"let myArray = [1, 2, 3]; let i = myArray[0]; myArray[i]", 2},
+		{"[1, 2, 3][3]", nil},
+		{"[1, 2, 3][-1]", nil},
+	}
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		integer, ok := tt.expected.(int)
+		if ok {
+			testIntegerObject(t, evaluated, int64(integer))
+		} else {
+			testNullObject(t, evaluated)
+		}
+	}
+}
+
+func TestArrayBuiltinFunctions(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected interface{}
+	}{
+		{"let arr = [1, 2, 3]; len(arr)", 3},
+		{"len(push([1, 2, 3], 4))", 4},
+		{"first([1, 2, 3])", 1},
+		{"last([1, 2, 3])", 3},
+		{"len(rest([1, 2, 3]))", 2},
+	}
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		switch expected := tt.expected.(type) {
+		case int:
+			testIntegerObject(t, evaluated, int64(expected))
+		case string:
+			errObj, ok := evaluated.(*object.Error)
+			if !ok {
+				t.Fatalf("object is not Error. got=%T (%+v)", evaluated, evaluated)
+			}
+			if errObj.Message != expected {
+				t.Fatalf("wrong error message. expected=%q, got=%q", expected, errObj.Message)
+			}
+		default:
+			t.Fatalf("unknown expected type %T", expected)
+		}
+	}
+}
