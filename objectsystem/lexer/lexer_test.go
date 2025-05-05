@@ -400,3 +400,35 @@ func TestNextTokenArray(t *testing.T) {
 		}
 	}
 }
+
+func TestNextTokenHash(t *testing.T) {
+	input := `
+	{"key": "value", "key2": "value2"}
+	`
+	tests := []struct {
+		expectedType    token.TokenType
+		expectedLiteral string
+	}{
+		{token.LBRACE, "{"},
+		{token.STRING, "key"},
+		{token.COLON, ":"},
+		{token.STRING, "value"},
+		{token.COMMA, ","},
+		{token.STRING, "key2"},
+		{token.COLON, ":"},
+		{token.STRING, "value2"},
+		{token.RBRACE, "}"},
+		{token.EOF, ""},
+	}
+
+	l := New(input)
+	for i, tt := range tests {
+		tok := l.NextToken()
+		if tok.Type != tt.expectedType {
+			t.Fatalf("tests[%d] - token type wrong. expected=%q, got=%q", i, tt.expectedType, tok.Type)
+		}
+		if tok.Literal != tt.expectedLiteral {
+			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q", i, tt.expectedLiteral, tok.Literal)
+		}
+	}
+}
