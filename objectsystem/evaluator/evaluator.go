@@ -75,7 +75,7 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			if isError(right) {
 				result = right
 			} else {
-				result = evalInfixExpression(node.Operator, left, right) // Assign to result
+				result = evalInfixExpression(node.Operator, left, right)
 			}
 		}
 
@@ -156,6 +156,12 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 		result = &object.Array{Elements: elements}
 
+	case *ast.HashLiteral:
+		if tracing.IsDebugMode() {
+			fmt.Println("    Eval: Handling *ast.HashLiteral")
+		}
+		result = evalHashLiteral(node, env)
+
 	case *ast.IndexExpression:
 		if tracing.IsDebugMode() {
 			fmt.Println("    Eval: Handling *ast.IndexExpression")
@@ -181,6 +187,28 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		fmt.Printf("<<< Eval END: Returning result type = %s, value = %+v\n", reflect.TypeOf(result), result)
 	}
 	return result
+}
+
+func evalHashLiteral(node *ast.HashLiteral, env *object.Environment) object.Object {
+	pairs := make(map[object.HashKey]object.HashPair)
+
+	for keyNode, valueNode := range node.Pairs {
+		key := Eval(keyNode, env)
+		if isError(key) {
+			return key
+		}
+		hashKey, ok := key.(object.Hashable)
+		if !ok {
+			return newError("unusable as hash key: %s", key.Type())
+		}
+		value := Eval(valueNode, env)
+		if isError(value) {
+			return value
+		}
+		hashed := hashKey.HashKey()
+		pairs[hashed] = object.HashPair{Key: key, Value: value}
+	}
+	return &object.Hash{Pairs: pairs}
 }
 
 func evalProgram(program *ast.Program, env *object.Environment) object.Object {
