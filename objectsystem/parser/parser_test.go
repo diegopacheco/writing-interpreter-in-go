@@ -387,9 +387,7 @@ func TestOperatorPrecedenceParsingPlusMinusDivGTLT(t *testing.T) {
 	}
 }
 
-func testIdentifier(t *testing.T,
-	exp ast.Expression,
-	value string) bool {
+func testIdentifier(t *testing.T, exp ast.Expression, value string) bool {
 	ident, ok := exp.(*ast.Identifier)
 	if !ok {
 		t.Errorf("exp not *ast.Identifier. got=%T", exp)
@@ -400,28 +398,24 @@ func testIdentifier(t *testing.T,
 		return false
 	}
 	if ident.TokenLiteral() != value {
-		t.Errorf("ident.TokenLiteral not %s. got=%s",
-			value, ident.TokenLiteral())
+		t.Errorf("ident.TokenLiteral not %s. got=%s", value, ident.TokenLiteral())
 		return false
 	}
 	return true
 }
-
-func testLiteralExpression(
-	t *testing.T,
-	exp ast.Expression,
-	expected interface{}) bool {
+func testLiteralExpression(t *testing.T, exp ast.Expression, expected interface{}) bool {
 	switch v := expected.(type) {
 	case int:
 		return testIntegerLiteral(t, exp, int64(v))
+	case int64:
+		return testIntegerLiteral(t, exp, v)
 	case string:
 		return testIdentifier(t, exp, v)
 	case bool:
 		return testBooleanLiteral(t, exp, v)
-	default:
-		t.Errorf("type of exp not handled. got=%T", exp)
-		return false
 	}
+	t.Errorf("type of exp not handled. got=%T", exp)
+	return false
 }
 
 func testInfixExpresson(t *testing.T,
@@ -452,9 +446,7 @@ func testInfixExpresson(t *testing.T,
 	return true
 }
 
-func testBooleanLiteral(t *testing.T,
-	exp ast.Expression,
-	value bool) bool {
+func testBooleanLiteral(t *testing.T, exp ast.Expression, value bool) bool {
 	bo, ok := exp.(*ast.Boolean)
 	if !ok {
 		t.Errorf("exp not *ast.Boolean. got=%T", exp)
@@ -465,8 +457,7 @@ func testBooleanLiteral(t *testing.T,
 		return false
 	}
 	if bo.TokenLiteral() != fmt.Sprintf("%t", value) {
-		t.Errorf("bo.TokenLiteral not %t. got=%s",
-			value, bo.TokenLiteral())
+		t.Errorf("bo.TokenLiteral not %t. got=%s", value, bo.TokenLiteral())
 		return false
 	}
 	return true
@@ -771,4 +762,147 @@ func TestParsingIndexExpression(t *testing.T) {
 	if !testInfixExpresson(t, indexExp.Index, 1, "+", 1) {
 		return
 	}
+}
+
+func TestParsingHashLiteral(t *testing.T) {
+	input := `{"one": 1, "two": 2 * 2, "three": 3 + 3}`
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParseErrors(t, p)
+
+	stmt := program.Statements[0].(*ast.ExpressionStatement)
+	hash, ok := stmt.Expression.(*ast.HashLiteral)
+	if !ok {
+		t.Fatalf("Expression is not ast.HashLiteral. got=%T", stmt.Expression)
+	}
+
+	if len(hash.Pairs) != 3 {
+		t.Errorf("hash.Pairs has wrong length. got=%d", len(hash.Pairs))
+	}
+
+	expected := map[string]interface{}{
+		"one":   int64(1),
+		"two":   []interface{}{int64(2), "*", int64(2)},
+		"three": []interface{}{int64(3), "+", int64(3)},
+	}
+
+	for key, value := range hash.Pairs {
+		literal, ok := key.(*ast.StringLiteral)
+		if !ok {
+			t.Errorf("key is not ast.StringLiteral. got=%T", key)
+			continue
+		}
+
+		expectedValue, ok := expected[literal.String()]
+		if !ok {
+			t.Errorf("No expected value for key %q found", literal.String())
+			continue
+		}
+
+		switch exp := expectedValue.(type) {
+		case int64:
+			testIntegerLiteral(t, value, exp)
+		case []interface{}:
+			if len(exp) != 3 {
+				t.Errorf("Expected infix structure needs 3 elements (left, op, right). got=%d", len(exp))
+				continue
+			}
+			testInfixExpression(t, value, exp[0], exp[1].(string), exp[2])
+		default:
+			t.Errorf("Unhandled expected type %T for key %q", expectedValue, literal.String())
+		}
+	}
+}
+
+func TestParsingHashLiteralEmpty(t *testing.T) {
+	input := `{}`
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParseErrors(t, p)
+
+	stmt, _ := program.Statements[0].(*ast.ExpressionStatement)
+	hash, ok := stmt.Expression.(*ast.HashLiteral)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not ast.HashLiteral. got=%T",
+			program.Statements[0])
+	}
+	if len(hash.Pairs) != 0 {
+		t.Fatalf("hash.Pairs wrong. got=%d", len(hash.Pairs))
+	}
+}
+
+func TestParsingHashLiteralsWithExpressions(t *testing.T) {
+	input := `{"one": 0, "two": 10 - 8, "three": 15 / 5}`
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParseErrors(t, p)
+
+	stmt := program.Statements[0].(*ast.ExpressionStatement)
+	hash, ok := stmt.Expression.(*ast.HashLiteral)
+	if !ok {
+		t.Fatalf("Expression is not ast.HashLiteral. got=%T", stmt.Expression)
+	}
+
+	if len(hash.Pairs) != 3 {
+		t.Errorf("hash.Pairs has wrong length. got=%d", len(hash.Pairs))
+	}
+
+	expected := map[string]interface{}{
+		"one":   int64(0),
+		"two":   []interface{}{int64(10), "-", int64(8)},
+		"three": []interface{}{int64(15), "/", int64(5)},
+	}
+
+	for key, value := range hash.Pairs {
+		literal, ok := key.(*ast.StringLiteral)
+		if !ok {
+			t.Errorf("key is not ast.StringLiteral. got=%T", key)
+			continue
+		}
+
+		expectedValue, ok := expected[literal.String()]
+		if !ok {
+			t.Errorf("No expected value for key %q found", literal.String())
+			continue
+		}
+
+		switch exp := expectedValue.(type) {
+		case int64:
+			testIntegerLiteral(t, value, exp)
+		case []interface{}:
+			if len(exp) != 3 {
+				t.Errorf("Expected infix structure needs 3 elements (left, op, right). got=%d", len(exp))
+				continue
+			}
+			testInfixExpression(t, value, exp[0], exp[1].(string), exp[2])
+		default:
+			t.Errorf("Unhandled expected type %T for key %q", expectedValue, literal.String())
+		}
+	}
+}
+
+func testInfixExpression(t *testing.T, exp ast.Expression, leftVal interface{}, operator string, rightVal interface{}) bool {
+	opExp, ok := exp.(*ast.InfixExpression)
+	if !ok {
+		t.Errorf("exp is not ast.InfixExpression. got=%T(%s)", exp, exp)
+		return false
+	}
+
+	if !testLiteralExpression(t, opExp.Left, leftVal) {
+		return false
+	}
+
+	if opExp.Operator != operator {
+		t.Errorf("exp.Operator is not '%s'. got=%q", operator, opExp.Operator)
+		return false
+	}
+
+	if !testLiteralExpression(t, opExp.Right, rightVal) {
+		return false
+	}
+
+	return true
 }
