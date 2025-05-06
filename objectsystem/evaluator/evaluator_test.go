@@ -464,5 +464,25 @@ func TestHashLiteralsAdvanced(t *testing.T) {
 			t.Errorf("no pair for given key. got=%v", expectedKey)
 		}
 	}
+}
 
+func TestHashIndexExpressions(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected interface{}
+	}{
+		{`{"one": 1, "two": 2}["one"]`, 1},
+		{`{"one": 1, "two": 2}["two"]`, 2},
+		{`let key = "one"; {"one": 1, "two": 2}[key]`, 1},
+		{`let key = "two"; {"one": 1, "two": 2}[key]`, 2},
+	}
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		integer, ok := tt.expected.(int)
+		if ok {
+			testIntegerObject(t, evaluated, int64(integer))
+		} else {
+			testNullObject(t, evaluated)
+		}
+	}
 }
