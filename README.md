@@ -1,6 +1,6 @@
 # writing-interpreter-in-go
 
-Book: Writing an Interpreter in Go
+Book: Writing an Interpreter in Go by Thorsten Ball
 
 ## Notes
 
